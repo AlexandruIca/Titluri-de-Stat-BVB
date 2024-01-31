@@ -291,6 +291,7 @@
                   setTimeout(updater, TIMEOUT);
                 } else {
                   showSymbols();
+                  socket.close();
                 }
               }, TIMEOUT);
             }
