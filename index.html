@@ -16,6 +16,7 @@
       --active-link-color: #CCC;
       --error-text-color: #F2705E;
 
+      --info-content-padding: 1ch;
       --horizontal-line-size: 2px;
       --progress-bar-width: 20ch;
       --fieldset-margin: 1ch;
@@ -43,7 +44,7 @@
     body {
       display: flex;
       flex-flow: column nowrap;
-      justify-contents: center;
+      justify-content: center;
       place-items: center;
       margin: 0;
       padding: 0;
@@ -77,6 +78,7 @@
       flex-flow: column nowrap;
       justify-content: center;
       align-items: center;
+      padding: var(--info-content-padding);
     }
 
     .info-container > p {
@@ -193,6 +195,7 @@
     <footer>
       <hr>
       <p>Datele sunt preluate folosind <a href="https://api.tradeville.ro">api.tradeville.ro</a>, fiind destinate exclusiv pentru uz personal.</p>
+      <p><a href="https://github.com/AlexandruIca/Titluri-de-Stat-BVB">GitHub</a></p>
     </footer>
     <script>
         (() => {
@@ -201,15 +204,15 @@
 
             const socket = new WebSocket('wss://api.tradeville.ro:443', ["apitv"]);
 
-            const connectionErrMsg = 'Fără conexiune la api.tradeville.ro! Fie datele contului demo s-au schimbat, fie contul demo al TradeVille nu mai există, fie API-ul TradeVille nu e disponibil la acest moment.';
+            const connectionErrMsg = 'Fără conexiune la api.tradeville.ro! Fie datele contului demo s-au schimbat, fie contul demo al TradeVille nu mai există, fie API-ul TradeVille nu e disponibil la acest moment. Un refresh poate funcționa.';
 
             let state = {
               numSymbols: 0,
               symbolData: [],
             };
 
-            function displayError(msg) {
-              console.error(msg);
+            function displayError(msg, error) {
+              console.error(`${msg} Error: ${JSON.stringify(error)}`);
 
               document.querySelector('.progress-container').style.display = 'none';
 
@@ -231,7 +234,7 @@
             socket.onopen = () => {
               send({ cmd: 'login', prm: { coduser: username, parola: password, demo: true } });
             };
-            socket.onerror = (error) => { displayError(connectionErrMsg); };
+            socket.onerror = (error) => { displayError(connectionErrMsg, error); };
             socket.onmessage = onMessage;
 
             function onMessage(event) {
@@ -241,7 +244,7 @@
                 switch (response.cmd) {
                   case 'login': {
                     if (!response.OK) {
-                      displayError(connectionErrMsg);
+                      displayError(connectionErrMsg, response);
                     } else {
                       send({ cmd: 'SearchSymbol', prm: { search: 'TITLURI STAT' } });
                     }
@@ -258,7 +261,7 @@
                   default: break;
                 }
               } catch (e) {
-                displayError(`Am primit un mesaj pe care (încă) nu îl putem procesa! (Eroare: ${e})`);
+                displayError(`Am primit un mesaj pe care (încă) nu îl putem procesa!`, response);
               }
             }
 
