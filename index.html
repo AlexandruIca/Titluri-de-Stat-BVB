@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/favicon.png" sizes="any">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <title>Titluri de Stat - BVB</title>
+    <style>
+    :root {
+      --primary-text-color: #444;
+      --table-header-text-color: white;
+      --table-header-background-color: #444;
+      --table-alternate-row-background-color: #EEE;
+      --decoration-color: black;
+      --active-link-color: #CCC;
+      --error-text-color: #F2705E;
+
+      --horizontal-line-size: 2px;
+      --progress-bar-width: 20ch;
+      --fieldset-margin: 1ch;
+      --table-border-size: 1px;
+      --table-border-color: #444;
+      --table-margin: 1ch;
+      --table-cell-padding: 0.1rem;
+
+      font-family: system-ui, Helvetica, sans-serif;
+      color: var(--primary-text-color);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    a:link, a:hover, a:visited {
+      color: var(--decoration-color);
+    }
+
+    a:active {
+      color: var(--active-link-color);
+    }
+
+    body {
+      display: flex;
+      flex-flow: column nowrap;
+      justify-contents: center;
+      place-items: center;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+    }
+
+    .error {
+      color: var(--error-text-color);
+    }
+
+    header {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-flow: column nowrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    hr {
+      width: 100%;
+      color: var(--decoration-color);
+      size: var(--horizontal-line-size);
+      margin: 0;
+      padding: 0;
+    }
+
+    .info-container {
+      display: flex;
+      flex-flow: column nowrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .info-container > p {
+      text-align: center;
+    }
+
+    .progress-container {
+      display: flex;
+      flex-flow: column nowrap;
+      justify-content: center;
+      align-items: center;
+      padding: 0;
+      margin: 0;
+    }
+
+    .progress {
+      width: var(--progress-bar-width);
+      accent-color: var(--decoration-color);
+    }
+
+    .sort-criteria {
+      accent-color: var(--decoration-color);
+    }
+
+    fieldset {
+      border: none;
+      margin-top: var(--fieldset-margin);
+    }
+
+    .table-container {
+      overflow-x: scroll;
+      max-width: calc(100vw - (2 * var(--table-margin)));
+    }
+
+    table {
+      border: var(--table-border-size) solid var(--table-border-color);
+      border-collapse: collapse;
+      margin: var(--table-margin);
+    }
+
+    th {
+      color: var(--table-header-text-color);
+      background-color: var(--table-header-background-color);
+      padding: var(--table-cell-padding);
+    }
+
+    td {
+      text-align: center;
+      padding: var(--table-cell-padding);
+    }
+
+    tr:nth-child(2n) {
+      background-color: var(--table-alternate-row-background-color);
+    }
+
+    footer {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-flow: column nowrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    footer p {
+      text-align: center;
+    }
+    </style>
+</head>
+<body>
+    <header>
+      <h1>Titluri de Stat</h1>
+      <hr/>
+    </header>
+    <section class="info-container">
+      <ul>
+         <li>Acest site listează titlurile de stat care sunt listate pe Bursa de Valori București.</li>
+         <li>Durează câteva secunde până apar datele pentru a nu suprasolicita serverele TradeVille.</li>
+      </ul>
+    </section>
+    <section class="progress-container">
+      <label for="progress-bar">Progres:</label>
+      <progress id="progress-bar" class="progress" value="0" max="100">0%</progress>
+    </section>
+    <section class="form-container" style="display: none">
+      <form>
+        <fieldset>
+          <legend>Sortare după:</legend>
+
+          <input type="radio" class="sort-criteria" id="sortName" name="sort">
+          <label for="sortName">Nume</label>
+          <br/>
+
+          <input type="radio" id="sortCurrency" class="sort-criteria" name="sort">
+          <label for="sortCurrency">Monedă</label>
+          <br/>
+
+          <input type="radio" id="sortYTM" class="sort-criteria" name="sort" checked>
+          <label for="sortYTM">YTM (Yield To Maturity)</label>
+          <br/>
+
+          <input type="radio" id="sortYield" class="sort-criteria" name="sort">
+          <label for="sortYield">Dobândă</label>
+          <br/>
+
+          <input type="radio" id="sortPrice" name="sort">
+          <label for="sortPrice">Preț</label>
+        </fieldset>
+      </form>
+    </section>
+    <section class="table-container">
+    </section>
+    <footer>
+      <hr>
+      <p>Datele sunt preluate folosind <a href="https://api.tradeville.ro">api.tradeville.ro</a>, fiind destinate exclusiv pentru uz personal.</p>
+    </footer>
+    <script>
+        (() => {
+            let username = '!DemoAPITDV';
+            let password = 'DemoAPITDV';
+
+            const socket = new WebSocket('wss://api.tradeville.ro:443', ["apitv"]);
+
+            const connectionErrMsg = 'Fără conexiune la api.tradeville.ro! Fie datele contului demo s-au schimbat, fie contul demo al TradeVille nu mai există, fie API-ul TradeVille nu e disponibil la acest moment.';
+
+            let state = {
+              numSymbols: 0,
+              symbolData: [],
+            };
+
+            function displayError(msg) {
+              console.error(msg);
+
+              document.querySelector('.progress-container').style.display = 'none';
+
+              let el = document.querySelector('.info-container');
+              let p = document.createElement('p');
+              p.classList.add('error');
+              p.textContent = msg;
+              el.appendChild(p);
+            }
+
+            const send = (data) => {
+              if (socket.readyState !== 1) {
+                displayError(connectionErrMsg);
+              } else {
+                socket.send(JSON.stringify(data));
+              }
+            };
+
+            socket.onopen = () => {
+              send({ cmd: 'login', prm: { coduser: username, parola: password, demo: true } });
+            };
+            socket.onerror = (error) => { displayError(connectionErrMsg); };
+            socket.onmessage = onMessage;
+
+            function onMessage(event) {
+              try {
+                const response = JSON.parse(event.data);
+
+                switch (response.cmd) {
+                  case 'login': {
+                    if (!response.OK) {
+                      displayError(connectionErrMsg);
+                    } else {
+                      send({ cmd: 'SearchSymbol', prm: { search: 'TITLURI STAT' } });
+                    }
+                    break;
+                  }
+                  case 'SearchSymbol': {
+                    processSymbols(response.data);
+                    break;
+                  }
+                  case 'Symbol': {
+                    processSymbol(response.data);
+                    break;
+                  }
+                  default: break;
+                }
+              } catch (e) {
+                displayError(`Am primit un mesaj pe care (încă) nu îl putem procesa! (Eroare: ${e})`);
+              }
+            }
+
+            function processSymbols(data) {
+              let requests = [];
+
+              state.numSymbols = data['Symbol'].length;
+
+              for (let i = 0; i < state.numSymbols; ++i) {
+                let symbol = data['Symbol'][i];
+                let isin = data['ISIN'][i];
+
+                requests.push({ cmd: 'Symbol', prm: { symbol: symbol } });
+              }
+
+              let currentSymbol = 0;
+
+              // The API is limited to 20 requests every ten seconds. A 1 second margin is added.
+              const timeLimit = 11000;
+              const requestLimit = 20;
+              const TIMEOUT = Math.ceil(timeLimit / requestLimit);
+
+              setTimeout(function updater() {
+                if (currentSymbol < state.numSymbols) {
+                  send(requests[currentSymbol]);
+                  currentSymbol += 1;
+                  setTimeout(updater, TIMEOUT);
+                } else {
+                  showSymbols();
+                }
+              }, TIMEOUT);
+            }
+
+            function processSymbol(data) {
+              const PRECISION = 2;
+              const ytm = parseFloat(data['YTM']).toFixed(PRECISION);
+              const yieldAmount = parseFloat(data['CouponY']).toFixed(PRECISION);
+              const price = parseFloat(data['Price']).toFixed(PRECISION);
+
+              state.symbolData.push({
+                name: data['Symbol'],
+                currency: data['Ccy'],
+                ytm: ytm,
+                yieldAmount: yieldAmount,
+                price: price,
+                isin: data['ISIN'],
+              });
+
+              let progress = Math.trunc((state.symbolData.length / state.numSymbols) * 100);
+              document.querySelector('.progress').setAttribute('value', progress);
+            }
+
+            function showSymbols() {
+              sortByField('ytm');
+
+              let table = document.createElement('table');
+              let thead = document.createElement('thead');
+              let headerRow = document.createElement('tr');
+              const headerNames = ['Nr.', 'Nume', 'Monedă', 'YTM', 'Dobândă', 'Preț', 'ISIN'];
+
+              for (let h of headerNames) {
+                let th = document.createElement('th');
+                th.textContent = h;
+                headerRow.appendChild(th);
+              }
+
+              thead.appendChild(headerRow);
+              table.appendChild(thead);
+
+              let tbody = document.createElement('tbody');
+
+              for (let index = 1; index <= state.symbolData.length; ++index) {
+                let symbol = state.symbolData[index - 1];
+                let row = document.createElement('tr');
+
+                row.append(createData(index));
+                row.append(createData(symbol.name, { textAlign: 'left' }));
+                row.append(createData(symbol.currency));
+                row.append(createData(`${symbol.ytm}%`));
+                row.append(createData(`${symbol.yieldAmount}%`));
+                row.append(createData(symbol.price));
+                row.append(createData(symbol.isin, { textAlign: 'left' }));
+
+                tbody.appendChild(row);
+              }
+
+              table.appendChild(tbody);
+              refreshLayout(table);
+            }
+
+            function createData(textContent, style) {
+              let td = document.createElement('td');
+              td.textContent = textContent;
+
+              for (let key in style) {
+                td.style[key] = style[key];
+              }
+
+              return td;
+            }
+
+            function refreshLayout(table) {
+              document.querySelector('.info-container').style.display = 'none';
+              document.querySelector('.progress-container').style.display = 'none';
+              document.querySelector('.form-container').style.display = 'block';
+              document.querySelector('.table-container').appendChild(table);
+
+              for (let input of document.querySelectorAll('input')) {
+                input.addEventListener('change', (event) => {
+                  sortAccordingly(event.target.id);
+                });
+              }
+            }
+
+            function sortAccordingly(criteria) {
+              switch (criteria) {
+                case 'sortName': {
+                  sortByField('name');
+                  break;
+                }
+                case 'sortCurrency': {
+                  sortByField('currency');
+                  break;
+                }
+                case 'sortYTM': {
+                  sortByField('ytm');
+                  break;
+                }
+                case 'sortYield': {
+                  sortByField('yieldAmount');
+                  break;
+                }
+                case 'sortPrice': {
+                  sortByField('price');
+                  break;
+                }
+                default: {
+                  sortByField('YTM');
+                  break;
+                }
+              }
+
+              repopulateTable();
+            }
+
+            function sortByField(field) {
+              switch (field) {
+                case 'currency': {
+                  state.symbolData.sort((a, b) => {
+                    if (a[field] > b[field]) {
+                      return -1;
+                    }
+                    if (a[field] < b[field]) {
+                      return 1;
+                    }
+
+                    if (a.ytm > b.ytm) {
+                      return -1;
+                    }
+                    if (a.ytm < b.ytm) {
+                      return 1;
+                    }
+
+                    return 0;
+                  });
+                  break;
+                }
+                case 'price': {
+                  state.symbolData.sort((a, b) => { return b[field] - a[field]; });
+                  break;
+                }
+                default: {
+                  state.symbolData.sort((a, b) => {
+                    if (a[field] > b[field]) {
+                      return -1;
+                    }
+                    if (a[field] < b[field]) {
+                      return 1;
+                    }
+
+                    return 0;
+                  });
+                  break;
+                }
+              }
+            }
+
+            function repopulateTable() {
+              let rows = document.querySelectorAll('tr');
+
+              for (let i = 1; i < rows.length; ++i) {
+                let cells = rows[i].childNodes;
+                let symbolIndex = i - 1;
+
+                cells[1].textContent = state.symbolData[symbolIndex].name;
+                cells[2].textContent = state.symbolData[symbolIndex].currency;
+                cells[3].textContent = `${state.symbolData[symbolIndex].ytm}%`;
+                cells[4].textContent = `${state.symbolData[symbolIndex].yieldAmount}%`;
+                cells[5].textContent = state.symbolData[symbolIndex].price;
+                cells[6].textContent = state.symbolData[symbolIndex].isin;
+              }
+            }
+        })();
+  </script>
+</body>
+</html>
