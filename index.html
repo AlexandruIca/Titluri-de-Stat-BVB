@@ -341,7 +341,7 @@
                 row.append(createData(index));
                 row.append(createData(symbol.name, { textAlign: 'left' }));
                 row.append(createData(symbol.currency));
-                row.append(createData(`${symbol.ytm}%`));
+                row.append(createData(`${isNaN(symbol.ytm) ? '---' : symbol.ytm}%`));
                 row.append(createData(`${symbol.yieldAmount}%`));
                 row.append(createData(symbol.price));
                 row.append(createData(symbol.isin, { textAlign: 'left' }));
@@ -459,7 +459,7 @@
 
                 cells[1].textContent = state.symbolData[symbolIndex].name;
                 cells[2].textContent = state.symbolData[symbolIndex].currency;
-                cells[3].textContent = `${state.symbolData[symbolIndex].ytm}%`;
+                cells[3].textContent = `${isNaN(state.symbolData[symbolIndex].ytm) ? '---' : state.symbolData[symbolIndex].ytm}%`;
                 cells[4].textContent = `${state.symbolData[symbolIndex].yieldAmount}%`;
                 cells[5].textContent = state.symbolData[symbolIndex].price;
                 cells[6].textContent = state.symbolData[symbolIndex].isin;
