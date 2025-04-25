@@ -1,6 +1,6 @@
 # Titluri de Stat pe BVB
 
-https://www.titluri-de-stat-bvb.ro
+~~https://www.titluri-de-stat-bvb.ro~~ (Domeniul a expirat)
 
 Site-ul se folosește de API-ul TradeVille (https://api.tradeville.ro) pentru a accesa datele legate de titlurile de stat [Fidelis](https://mfinante.gov.ro/web/trezor/titluri-de-stat-fidelis). Ele se pot sorta în funcție de:
 
